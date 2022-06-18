@@ -79,8 +79,9 @@ class ReflexAgent(Agent):
         newScaredTimes = [
             ghostState.scaredTimer for ghostState in newGhostStates]
 
-        "*** YOUR CODE HERE ***"
         score = successorGameState.getScore()
+        score += max(newScaredTimes)
+
         # computa distância para o fantasma mais próximo.
         minDistanceGhost = float("+inf")
         for ghostPos in ghostPositions:
@@ -95,19 +96,22 @@ class ReflexAgent(Agent):
         if successorGameState.isWin():
             return float("+inf")
 
-        score -= 5 * minDistanceGhost
+        score += minDistanceGhost
         minDistanceFood = float("+inf")
         for foodPos in newFood.asList():
             minDistanceFood = min(
                 minDistanceFood, util.manhattanDistance(foodPos, newPos))
+
         # incentiva acao que conduz o agente para mais perto da comida mais próxima
-        score -= 3 * minDistanceFood
+        score -= minDistanceFood
+
         # incentiva acao que leva a uma comida
         if(successorGameState.getNumFood() < currentGameState.getNumFood()):
             score += 10
+
          # penaliza as acoes de parada
         if action == Directions.STOP:
-            score -= 50
+            score -= 10
         return score
 
 
@@ -358,25 +362,54 @@ def betterEvaluationFunction(currentGameState):
     score = scoreEvaluationFunction(currentGameState)
     newFoodList = currentGameState.getFood().asList()
     newPos = currentGameState.getPacmanPosition()
+
     # ATENÇÃO: variáveis não usadas AINDA!
     # Procure modificar essa função para usar essas variáveis e melhorar a função de avaliação.
     # Descreva em seu relatório de que forma essas variáveis foram usadas.
+
     ghostStates = currentGameState.getGhostStates()
-    scaredTimes = [ghostState. for ghostState in ghostStates]
-    minScaredTimes = min(scaredTimes)
-    score += 2*minScaredTimes
-    # calcula distância entre o agente e a pílula mais próxima
-    minDistanceFood = float("+inf")
+    scaredTimes = [ghostState.scaredTimer for ghostState in ghostStates]
+    sumScaredTimes = sum(scaredTimes)
+
+    # calcula distância entre o agente e as pílula
+    DistanceFood = []
     for foodPos in newFoodList:
-        minDistanceFood = min(minDistanceFood,
-                              util.manhattanDistance(foodPos, newPos))
-    # incentiva o agente a se aproximar mais da pílula mais próxima
-    score -= 4 * minDistanceFood
+        DistanceFood.append(util.manhattanDistance(foodPos, newPos))
+    reciprocalfoodDistance = 0
+
+    if sum(DistanceFood) > 0:
+        reciprocalfoodDistance = 1.0 / sum(DistanceFood)
+
+    # incentiva a agente a se aproxima as comidas
+    score += reciprocalfoodDistance
+    numberofPowerPellets = len(currentGameState.getCapsules())
+
+    # as posicoes dos ghosts
+    ghostPos = []
+    for ghost in ghostStates:
+        ghostPos.append(ghost.getPosition())
+
+    # distancia entre o pacman e os ghosts
+    ghostDistance = [0]
+    for pos in ghostPos:
+        ghostDistance.append(manhattanDistance(newPos, pos))
+
+    # incentiva o agente a
+    #  ir atras de ghosts quando estao com medo e longe deles quando nao estao
+    if sumScaredTimes > 0:
+        score += sumScaredTimes - numberofPowerPellets - sum(ghostDistance)
+    else:
+        score += sum(ghostDistance) + numberofPowerPellets
+
+    # # incentiva o agente a se aproximar mais da pílula mais próxima
+    score -= min(DistanceFood)
+
     # incentiva o agente a comer pílulas
-    score -= 4 * len(newFoodList)
-    # incentiva o agente a se mover para proxímo das cápsulas
+    score -= len(newFoodList)
+
+    # incentiva o agente a comer capsulas
     capsulelocations = currentGameState.getCapsules()
-    score -= 4 * len(capsulelocations)
+    score -= 2 * len(capsulelocations)
     return score
 
 
